@@ -1,40 +1,31 @@
 package com.spring.producerconsumer.controller;
 
-import org.apache.kafka.clients.producer.KafkaProducer;
-import org.apache.kafka.clients.producer.Producer;
-import org.apache.kafka.clients.producer.ProducerRecord;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.Properties;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/producer")
+@CrossOrigin(
+        origins = "http://localhost:5173",
+        allowedHeaders = "*",
+        methods = {RequestMethod.POST, RequestMethod.OPTIONS}
+)
 public class ProducerController {
+
     private static final String TOPIC_NAME = "testy";
-    private static final String BOOTSTRAP_SERVERS = "10.0.2.15:9092";
 
-    private final Producer<String, String> kafkaProducer;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
-    public ProducerController() {
-        Properties props = new Properties();
-        props.put("bootstrap.servers", BOOTSTRAP_SERVERS);
-        props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-        this.kafkaProducer = new KafkaProducer<>(props);
+    public ProducerController(KafkaTemplate<String, String> kafkaTemplate) {
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @PostMapping("/event")
-    public void sendEventToKafka(@RequestBody String eventData) {
-        ProducerRecord<String, String> record = new ProducerRecord<>(TOPIC_NAME, "userEvent", eventData);
-        kafkaProducer.send(record, (metadata, exception) -> {
-            if (exception != null) {
-                System.err.println("Error sending message to Kafka: " + exception.getMessage());
-            } else {
-                System.out.println("Message sent to Kafka, offset: " + metadata.offset());
-            }
-        });
+    public void sendEventToKafka(@RequestBody Map<String, String> payload) {
+        String event = payload.get("event");
+        kafkaTemplate.send(TOPIC_NAME, event);
+        System.out.println("Sent event to Kafka: " + event);
     }
 }
